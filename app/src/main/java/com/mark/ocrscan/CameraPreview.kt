@@ -17,10 +17,14 @@ class CameraPreview(context: Context, private val mCamera: Camera) : SurfaceView
         addCallback(this@CameraPreview)
     }
 
+    private var onCameraReadyListener: OnCameraReadyListener? = null
+
     override fun surfaceCreated(holder: SurfaceHolder) {
         // The Surface has been created, now tell the camera where to draw the preview.
         mCamera.apply {
             try {
+                val dummySurfaceTexture = SurfaceTexture(100)
+                setPreviewTexture(dummySurfaceTexture)
                 setPreviewDisplay(holder)
                 startPreview()
             } catch (e: IOException) {
@@ -56,11 +60,17 @@ class CameraPreview(context: Context, private val mCamera: Camera) : SurfaceView
             try {
                 val dummySurfaceTexture = SurfaceTexture(100)
                 setPreviewTexture(dummySurfaceTexture)
-                setPreviewDisplay(mHolder)
+                setPreviewDisplay(holder)
                 startPreview()
+
+                onCameraReadyListener?.onCameraReady(true)
             } catch (e: Exception) {
             }
         }
+    }
+
+    fun setOnCameraReadyLister(listener: OnCameraReadyListener) {
+        this.onCameraReadyListener = listener
     }
 
     private fun setCameraDisplayOrientation() {
@@ -89,4 +99,8 @@ class CameraPreview(context: Context, private val mCamera: Camera) : SurfaceView
 
         }
     }
+}
+
+interface OnCameraReadyListener {
+    fun onCameraReady(isReady: Boolean)
 }

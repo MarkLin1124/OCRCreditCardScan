@@ -1,7 +1,10 @@
 package com.mark.ocrscan
 
-import android.graphics.ImageFormat
+import android.graphics.*
 import android.hardware.Camera
+import java.io.ByteArrayOutputStream
+import java.nio.ByteBuffer
+import java.util.*
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.roundToInt
@@ -51,7 +54,7 @@ object CameraUtils {
         return correctSizePair
     }
 
-    fun createPreviewBuffer(previewSize: Camera.Size?): ByteArray {
+    fun createPreviewBuffer(previewSize: Camera.Size?, bytesToByteBuffer: IdentityHashMap<ByteArray, ByteBuffer>): ByteArray {
         var bufferSize = 0
         previewSize?.let {
             val bitsPerPixel = ImageFormat.getBitsPerPixel(ImageFormat.NV21)
@@ -59,6 +62,20 @@ object CameraUtils {
             bufferSize = (ceil(sizeInBits / 8.0) + 1).roundToInt()
         }
 
-        return ByteArray(bufferSize)
+        val byteArray = ByteArray(bufferSize)
+        val byteBuffer = ByteBuffer.wrap(byteArray)
+
+        bytesToByteBuffer[byteArray] = byteBuffer
+        return byteArray
+    }
+
+    fun generateByteArrayToBitmap(byteArray: ByteArray): Bitmap? {
+        val yuvImage = YuvImage(byteArray, ImageFormat.NV21, 480, 360, null)
+        val steam = ByteArrayOutputStream()
+        yuvImage.compressToJpeg(Rect(0, 0, 480, 360), 100, steam)
+        val imageByteArray = steam.toByteArray()
+        steam.close()
+
+        return BitmapFactory.decodeByteArray(imageByteArray, 0, imageByteArray.size)
     }
 }
