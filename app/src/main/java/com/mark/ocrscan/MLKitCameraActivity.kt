@@ -119,23 +119,32 @@ class MLKitCameraActivity : AppCompatActivity() {
     private fun textRecognizerByByteArray(inputImage: InputImage) {
         recognizer?.process(inputImage)
             ?.addOnSuccessListener { visionText ->
-                // Task completed successfully
                 for (textBlock in visionText.textBlocks) {
                     val line = textBlock.lines.find {
-                        it.text.matches(Regex("[0-9]{4} [0-9]{4} [0-9]{4} [0-9]{4}"))
+                        it.text.matches(Regex("[A-Za-z0-9]{4} [A-Za-z0-9]{4} [A-Za-z0-9]{4} [A-Za-z0-9]{4}"))
                     }
 
                     if (line != null) {
-                        stopCamera()
-                        setResult(RESULT_OK, Intent().apply {
-                            putExtra("CardNumber", line.text)
-                        })
-                        finish()
+                        val number = line.text
+                            .replace("H", "4")
+                            .replace("D", "0")
+                            .replace("E", "2")
+                            .replace("e", "2")
+                            .replace("b", "6")
+                            .replace("L", "1")
+                            .replace("p", "0")
+
+                        if (number.matches(Regex("[0-9]{4} [0-9]{4} [0-9]{4} [0-9]{4}"))) {
+                            stopCamera()
+                            setResult(RESULT_OK, Intent().apply {
+                                putExtra("CardNumber", number)
+                            })
+                            finish()
+                        }
                     }
                 }
             }
             ?.addOnFailureListener { e ->
-                // Task failed with an exception
                 Log.e("error", "e: ${e.message}")
             }
     }
