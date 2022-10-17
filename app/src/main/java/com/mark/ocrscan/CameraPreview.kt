@@ -6,34 +6,18 @@ import android.hardware.Camera
 import android.os.Build
 import android.view.*
 import androidx.core.hardware.display.DisplayManagerCompat
-import java.io.IOException
 
 class CameraPreview(context: Context, private val mCamera: Camera) : SurfaceView(context), SurfaceHolder.Callback {
     var rotationDegree = 0
 
     private val mHolder: SurfaceHolder = holder.apply {
-        // Install a SurfaceHolder.Callback so we get notified when the
-        // underlying surface is created and destroyed.
         addCallback(this@CameraPreview)
     }
 
     private var onCameraReadyListener: OnCameraReadyListener? = null
 
     override fun surfaceCreated(holder: SurfaceHolder) {
-        // The Surface has been created, now tell the camera where to draw the preview.
-        mCamera.apply {
-            try {
-                val dummySurfaceTexture = SurfaceTexture(100)
-                setPreviewTexture(dummySurfaceTexture)
-                setPreviewDisplay(holder)
-                startPreview()
-            } catch (e: IOException) {
-            }
-        }
-    }
-
-    override fun surfaceDestroyed(holder: SurfaceHolder) {
-        // empty. Take care of releasing the Camera preview in your activity.
+        startCamera()
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, w: Int, h: Int) {
@@ -47,14 +31,19 @@ class CameraPreview(context: Context, private val mCamera: Camera) : SurfaceView
         // stop preview before making changes
         try {
             mCamera.stopPreview()
+            onCameraReadyListener?.onCameraReady(false)
         } catch (e: Exception) {
-            // ignore: tried to stop a non-existent preview
         }
 
         // set preview size and make any resize, rotate or
         // reformatting changes here
         setCameraDisplayOrientation()
 
+        // start preview with new settings
+        startCamera()
+    }
+
+    private fun startCamera() {
         // start preview with new settings
         mCamera.apply {
             try {
@@ -98,6 +87,9 @@ class CameraPreview(context: Context, private val mCamera: Camera) : SurfaceView
         } catch (e: Exception) {
 
         }
+    }
+
+    override fun surfaceDestroyed(holder: SurfaceHolder) {
     }
 }
 

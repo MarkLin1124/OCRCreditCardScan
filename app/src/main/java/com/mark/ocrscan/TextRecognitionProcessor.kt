@@ -69,14 +69,14 @@ class TextRecognitionProcessor {
     }
 
     private fun replaceRelativeLetterToNumber(text: String) =
-        text.replace("H", "4")
-            .replace("D", "0")
+        text.replace("D", "0")
             .replace("C", "0")
+            .replace("p", "0")
+            .replace("L", "1")
             .replace("E", "2")
             .replace("e", "2")
+            .replace("H", "4")
             .replace("b", "6")
-            .replace("L", "1")
-            .replace("p", "0")
 
     fun createInputImageByByteBuffer(byteBuffer: ByteBuffer?, size: Camera.Size?, rotationDegree: Int): InputImage? {
         if (byteBuffer == null) return null
@@ -92,5 +92,3 @@ class TextRecognitionProcessor {
 
     interface OnCreditCardRecognitionCallback : OnTextRecognitionCallback<CreditCardInfo>
 }
-
-data class CreditCardInfo(val number: String, val expireDate: String)
