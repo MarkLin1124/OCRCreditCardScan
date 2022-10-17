@@ -68,14 +68,4 @@ object CameraUtils {
         bytesToByteBuffer[byteArray] = byteBuffer
         return byteArray
     }
-
-    fun generateByteArrayToBitmap(byteArray: ByteArray): Bitmap? {
-        val yuvImage = YuvImage(byteArray, ImageFormat.NV21, 480, 360, null)
-        val steam = ByteArrayOutputStream()
-        yuvImage.compressToJpeg(Rect(0, 0, 480, 360), 100, steam)
-        val imageByteArray = steam.toByteArray()
-        steam.close()
-
-        return BitmapFactory.decodeByteArray(imageByteArray, 0, imageByteArray.size)
-    }
 }

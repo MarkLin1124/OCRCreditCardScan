@@ -4,34 +4,28 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.ImageFormat
-import android.graphics.SurfaceTexture
 import android.hardware.Camera
 import android.hardware.Camera.CameraInfo
 import android.os.Bundle
-import android.util.Log
 import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.text.TextRecognition
-import com.google.mlkit.vision.text.TextRecognizer
-import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import java.nio.ByteBuffer
 import java.util.*
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
-class MLKitCameraActivity : AppCompatActivity() {
+class MLKitCameraActivity : AppCompatActivity(), TextRecognitionProcessor.OnCreditCardRecognitionCallback {
     companion object {
         const val TAG = "MLKitCameraActivity"
         fun getActivityIntent(activity: AppCompatActivity) = Intent(activity, MLKitCameraActivity::class.java)
     }
 
-    private var recognizer: TextRecognizer? = null
-
     private val frameLayout by lazy {
         findViewById<FrameLayout>(R.id.layout_camera)
     }
+
+    private var processor: TextRecognitionProcessor? = null
 
     private var camera: Camera? = null
 
@@ -48,12 +42,16 @@ class MLKitCameraActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_ml_kit)
 
-        recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
         if (packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
-            initCamera()
+            init()
         } else {
-            Toast.makeText(this, "", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "No enable camera", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun init() {
+        processor = TextRecognitionProcessor()
+        initCamera()
     }
 
     private fun initCamera() {
@@ -100,6 +98,25 @@ class MLKitCameraActivity : AppCompatActivity() {
         processingThread?.start()
     }
 
+    override fun onSuccess(result: CreditCardInfo) {
+        setResult(RESULT_OK, Intent().apply {
+            putExtra("CardNumber", result.number)
+        })
+        finish()
+    }
+
+    override fun onFailure(e: Exception) {
+        Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onDestroy() {
+        stopCamera()
+        processor?.stop()
+
+        super.onDestroy()
+    }
+
+
     private fun stopCamera() {
         frameProcessingRunnable?.setActive(false)
         processingThread?.join()
@@ -111,42 +128,6 @@ class MLKitCameraActivity : AppCompatActivity() {
         camera?.setPreviewDisplay(null)
         camera?.release()
         camera = null
-
-        recognizer?.close()
-        recognizer = null
-    }
-
-    private fun textRecognizerByByteArray(inputImage: InputImage) {
-        recognizer?.process(inputImage)
-            ?.addOnSuccessListener { visionText ->
-                for (textBlock in visionText.textBlocks) {
-                    val line = textBlock.lines.find {
-                        it.text.matches(Regex("[A-Za-z0-9]{4} [A-Za-z0-9]{4} [A-Za-z0-9]{4} [A-Za-z0-9]{4}"))
-                    }
-
-                    if (line != null) {
-                        val number = line.text
-                            .replace("H", "4")
-                            .replace("D", "0")
-                            .replace("E", "2")
-                            .replace("e", "2")
-                            .replace("b", "6")
-                            .replace("L", "1")
-                            .replace("p", "0")
-
-                        if (number.matches(Regex("[0-9]{4} [0-9]{4} [0-9]{4} [0-9]{4}"))) {
-                            stopCamera()
-                            setResult(RESULT_OK, Intent().apply {
-                                putExtra("CardNumber", number)
-                            })
-                            finish()
-                        }
-                    }
-                }
-            }
-            ?.addOnFailureListener { e ->
-                Log.e("error", "e: ${e.message}")
-            }
     }
 
     private inner class FrameProcessingRunnable : Runnable {
@@ -201,8 +182,10 @@ class MLKitCameraActivity : AppCompatActivity() {
                 }
 
                 try {
-                    val image = InputImage.fromByteBuffer(data!!, sizePair?.preview?.width ?: 0, sizePair?.preview?.height ?: 0, preview?.rotationDegree ?: 0, InputImage.IMAGE_FORMAT_NV21)
-                    textRecognizerByByteArray(image)
+                    val image = processor?.createInputImageByByteBuffer(data!!, sizePair?.preview, preview?.rotationDegree ?: 0)
+                    image?.let {
+                        processor?.recognizeCreditCard(it, this@MLKitCameraActivity)
+                    }
                 } finally {
                     camera?.addCallbackBuffer(data!!.array())
                 }
